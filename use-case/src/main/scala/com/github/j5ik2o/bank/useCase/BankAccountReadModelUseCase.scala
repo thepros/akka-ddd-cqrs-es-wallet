@@ -43,26 +43,12 @@ class BankAccountReadModelUseCase(bankAccountReadModelFlows: BankAccountReadMode
 
   private val projectionFlow: Flow[(BankAccountEvent, Long), Int, NotUsed] =
     Flow[(BankAccountEvent, Long)].flatMapConcat {
-      case (event: BankAccountOpened, sequenceNr: Long) =>
-        Source
-          .single((event.bankAccountId, event.name.value, sequenceNr, event.occurredAt))
-          .via(bankAccountReadModelFlows.openBankAccountFlow)
-      case (event: BankAccountEventUpdated, sequenceNr: Long) =>
-        Source
-          .single((event.bankAccountId, event.name.value, sequenceNr, event.occurredAt))
-          .via(bankAccountReadModelFlows.updateAccountFlow)
+
       case (event: BankAccountDeposited, sequenceNr: Long) =>
         Source
-          .single((event.bankAccountId, event.deposit, sequenceNr, event.occurredAt))
+          .single((event.deposit, sequenceNr, event.occurredAt))
           .via(bankAccountReadModelFlows.depositBankAccountFlow)
-      case (event: BankAccountWithdrawn, sequenceNr: Long) =>
-        Source
-          .single((event.bankAccountId, event.withdraw, sequenceNr, event.occurredAt))
-          .via(bankAccountReadModelFlows.withdrawBankAccountFlow)
-      case (event: BankAccountClosed, sequenceNr: Long) =>
-        Source
-          .single((event.bankAccountId, sequenceNr, event.occurredAt))
-          .via(bankAccountReadModelFlows.closeBankAccountFlow)
+
     }
 
   def execute(): Future[Done] = {

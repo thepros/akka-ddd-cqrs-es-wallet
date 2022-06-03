@@ -1,5 +1,7 @@
 package com.github.j5ik2o.bank.adaptor.dao
 
+import scala.concurrent.ExecutionContext
+
 import akka.NotUsed
 import akka.stream.scaladsl.{ Flow, Source }
 import com.github.j5ik2o.bank.adaptor.generator.IdGenerator
@@ -11,11 +13,8 @@ import com.github.j5ik2o.bank.useCase.BankAccountAggregateUseCase.Protocol.{
   ResolveBankAccountEventsSucceeded
 }
 import com.github.j5ik2o.bank.useCase.port.BankAccountReadModelFlows
-import org.sisioh.baseunits.scala.money.Money
 import org.sisioh.baseunits.scala.time.TimePoint
 import slick.jdbc.JdbcProfile
-
-import scala.concurrent.ExecutionContext
 
 class BankAccountReadModelFlowsImpl(val profile: JdbcProfile, val db: JdbcProfile#Backend#Database)
     extends BankAccountComponent
@@ -23,22 +22,19 @@ class BankAccountReadModelFlowsImpl(val profile: JdbcProfile, val db: JdbcProfil
     with BankAccountReadModelFlows {
   import profile.api._
 
-  private val bankAccountEventIdGenerator: IdGenerator[BankAccountEventId] =
-    IdGenerator.ofBankAccountEventId(profile, db)
-
   override def resolveBankAccountEventByIdFlow(
       implicit ec: ExecutionContext
   ): Flow[ResolveBankAccountEventsRequest, ResolveBankAccountEventsResponse, NotUsed] =
     Flow[ResolveBankAccountEventsRequest]
       .mapAsync(1) { _request =>
-        db.run(BankAccountEventDao.filter(_.bankAccountId === _request.bankAccountId.value).result).map((_request, _))
+        db.run(BankAccountEventDao.result).map((_request, _))
       }
       .map {
         case (_request, result) =>
           val values = result.map { v =>
-            BankAccountEventBody(v.`type`, v.amount, v.currencyCode, v.createdAt)
+            BankAccountEventBody(v.amount, v.createdAt)
           }
-          ResolveBankAccountEventsSucceeded(_request.bankAccountId, values)
+          ResolveBankAccountEventsSucceeded(values)
       }
 
   def resolveLastSeqNrSource(implicit ec: ExecutionContext): Source[Long, NotUsed] =
@@ -47,95 +43,24 @@ class BankAccountReadModelFlowsImpl(val profile: JdbcProfile, val db: JdbcProfil
         .map(_.getOrElse(0L))
     }
 
-  override def openBankAccountFlow: Flow[(BankAccountId, String, Long, TimePoint), Int, NotUsed] =
-    Flow[(BankAccountId, String, Long, TimePoint)].mapAsync(1) {
-      case (id, name, sequenceNr, occurredAt) =>
-        db.run(
-          BankAccountDao.forceInsert(
-            BankAccountRecord(
-              id.value,
-              deleted = false,
-              name,
-              sequenceNr,
-              occurredAt.asJavaZonedDateTime(),
+  override def depositBankAccountFlow(
+      implicit ec: ExecutionContext
+  ): Flow[(BigDecimal, Long, TimePoint), Int, NotUsed] =
+    Flow[(BigDecimal, Long, TimePoint)].mapAsync(1) {
+      case (deposit, sequenceNr, occurredAt) =>
+        val query = (for {
+          bankAccountUpdateResult <- BankAccountDao
+            .map(e => e.sequenceNr)
+            .update(sequenceNr)
+          bankAccountEventInsertResult <- BankAccountEventDao.forceInsert(
+            BankAccountEventRecord(
+              deposit.toLong,
               occurredAt.asJavaZonedDateTime()
             )
           )
-        )
-    }
+        } yield (bankAccountUpdateResult, bankAccountEventInsertResult)).transactionally
+        db.run(query).map(_ => 1)
 
-  override def updateAccountFlow: Flow[(BankAccountId, String, Long, TimePoint), Int, NotUsed] =
-    Flow[(BankAccountId, String, Long, TimePoint)].mapAsync(1) {
-      case (id, name, sequenceNr, occurredAt) =>
-        db.run(
-          BankAccountDao
-            .filter(_.id === id.value)
-            .map(e => (e.name, e.sequenceNr, e.updatedAt))
-            .update((name, sequenceNr, occurredAt.asJavaZonedDateTime()))
-        )
-    }
-
-  override def depositBankAccountFlow(
-      implicit ec: ExecutionContext
-  ): Flow[(BankAccountId, Money, Long, TimePoint), Int, NotUsed] =
-    Flow[(BankAccountId, Money, Long, TimePoint)].mapAsync(1) {
-      case (id, deposit, sequenceNr, occurredAt) =>
-        bankAccountEventIdGenerator.generateId().flatMap { bankAccountEventId =>
-          val query = (for {
-            bankAccountUpdateResult <- BankAccountDao
-              .filter(_.id === id.value)
-              .map(e => (e.sequenceNr, e.updatedAt))
-              .update((sequenceNr, occurredAt.asJavaZonedDateTime()))
-            bankAccountEventInsertResult <- BankAccountEventDao.forceInsert(
-              BankAccountEventRecord(
-                bankAccountEventId.value,
-                id.value,
-                EventType.Deposit.entryName,
-                deposit.amount.toLong,
-                deposit.currency.getCurrencyCode,
-                occurredAt.asJavaZonedDateTime()
-              )
-            )
-          } yield (bankAccountUpdateResult, bankAccountEventInsertResult)).transactionally
-          db.run(query).map(_ => 1)
-        }
-    }
-
-  override def withdrawBankAccountFlow(
-      implicit ec: ExecutionContext
-  ): Flow[(BankAccountId, Money, Long, TimePoint), Int, NotUsed] =
-    Flow[(BankAccountId, Money, Long, TimePoint)].mapAsync(1) {
-      case (id, withdraw, sequenceNr, occurredAt) =>
-        bankAccountEventIdGenerator.generateId().flatMap { bankAccountEventId =>
-          val query = for {
-            bankAccountUpdateResult <- BankAccountDao
-              .filter(_.id === id.value)
-              .map(e => (e.sequenceNr, e.updatedAt))
-              .update((sequenceNr, occurredAt.asJavaZonedDateTime()))
-            bankAccountEventInsertResult <- BankAccountEventDao.forceInsert(
-              BankAccountEventRecord(
-                bankAccountEventId.value,
-                id.value,
-                EventType.Withdraw.entryName,
-                withdraw.amount.toLong,
-                withdraw.currency.getCurrencyCode,
-                occurredAt.asJavaZonedDateTime()
-              )
-            )
-          } yield (bankAccountUpdateResult, bankAccountEventInsertResult)
-          db.run(query).map(_ => 1)
-        }
-    }
-
-  override def closeBankAccountFlow: Flow[(BankAccountId, Long, TimePoint), Int, NotUsed] =
-    Flow[(BankAccountId, Long, TimePoint)].mapAsync(1) {
-      case (id, sequenceNr, occurredAt) =>
-        db.run(
-          BankAccountDao
-            .filter(_.id === id.value)
-            .map(e => (e.deleted, e.sequenceNr, e.updatedAt))
-            .update((true, sequenceNr, occurredAt.asJavaZonedDateTime()))
-        )
     }
 
 }

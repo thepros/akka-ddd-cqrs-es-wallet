@@ -1,20 +1,19 @@
 package com.github.j5ik2o.bank.apiServer
 
+import scala.concurrent.ExecutionContextExecutor
+
 import akka.actor.{ ActorRef, ActorSystem }
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
-import com.github.j5ik2o.bank.adaptor.aggregate.{ BankAccountAggregateFlowsImpl, ShardedBankAccountAggregates }
+import com.github.j5ik2o.bank.adaptor.aggregate.{ BankAccountAggregate, BankAccountAggregateFlowsImpl }
 import com.github.j5ik2o.bank.adaptor.controller.Routes
 import com.github.j5ik2o.bank.adaptor.dao.BankAccountReadModelFlowsImpl
-import com.github.j5ik2o.bank.adaptor.generator.IdGenerator
 import com.github.j5ik2o.bank.adaptor.readJournal.JournalReaderImpl
 import com.github.j5ik2o.bank.useCase.{ BankAccountAggregateUseCase, BankAccountReadModelUseCase }
 import com.typesafe.config.{ Config, ConfigFactory }
 import pureconfig._
 import slick.basic.DatabaseConfig
 import slick.jdbc.JdbcProfile
-
-import scala.concurrent.ExecutionContextExecutor
 
 object Main extends App {
   val rootConfig: Config                    = ConfigFactory.load()
@@ -24,10 +23,8 @@ object Main extends App {
   implicit val materializer: ActorMaterializer            = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  val bankAccountIdGenerator = IdGenerator.ofBankAccountId(dbConfig.profile, dbConfig.db)
-
   val bankAccountAggregatesRef: ActorRef =
-    system.actorOf(ShardedBankAccountAggregates.props, ShardedBankAccountAggregates.name)
+    system.actorOf(BankAccountAggregate.props, BankAccountAggregate.name)
 
   val bankAccountAggregateUseCase: BankAccountAggregateUseCase = new BankAccountAggregateUseCase(
     new BankAccountAggregateFlowsImpl(bankAccountAggregatesRef)
@@ -37,7 +34,7 @@ object Main extends App {
     new BankAccountReadModelUseCase(new BankAccountReadModelFlowsImpl(dbConfig.profile, dbConfig.db),
                                     new JournalReaderImpl())
 
-  val routes: Routes = Routes(bankAccountIdGenerator, bankAccountAggregateUseCase, bankAccountReadModelUseCase)
+  val routes: Routes = Routes(bankAccountAggregateUseCase, bankAccountReadModelUseCase)
 
   val ApiServerConfig(host, port) =
     loadConfigOrThrow[ApiServerConfig](system.settings.config.getConfig("bank.api-server"))

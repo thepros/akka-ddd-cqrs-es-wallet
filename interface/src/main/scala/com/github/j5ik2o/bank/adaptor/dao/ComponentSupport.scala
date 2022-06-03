@@ -19,9 +19,7 @@ trait ComponentSupport {
 
   trait DaoSupport[Id, Entity]
 
-  trait Record {
-    val id: Long
-  }
+  trait Record {}
 
   trait SoftDeletableRecord extends Record {
     val status: String

@@ -6,8 +6,6 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import cats.syntax.either._
-import com.github.j5ik2o.bank.adaptor.generator.IdGenerator
-import com.github.j5ik2o.bank.domain.model.BankAccountId
 import com.github.j5ik2o.bank.useCase.{ BankAccountAggregateUseCase, BankAccountReadModelUseCase }
 import org.hashids.Hashids
 
@@ -18,34 +16,15 @@ object Routes {
     val errorMessages: Seq[String]
   }
 
-  case class OpenBankAccountRequestJson(name: String)
+  case class AddBankAccountEventRequestJson(amount: Long, datetime: String)
 
-  case class OpenBankAccountResponseJson(id: String, errorMessages: Seq[String] = Seq.empty) extends ResponseJson {
+  case class AddBankAccountEventResponseJson(errorMessages: Seq[String] = Seq.empty) extends ResponseJson {
     override val isSuccessful: Boolean = errorMessages.isEmpty
   }
 
-  case class UpdateBankAccountRequestJson(name: String)
+  case class BankAccountEventJson(amount: Long, createAt: Long)
 
-  case class UpdateBankAccountResponseJson(id: String, errorMessages: Seq[String] = Seq.empty) extends ResponseJson {
-    override val isSuccessful: Boolean = errorMessages.isEmpty
-  }
-
-  case class AddBankAccountEventRequestJson(`type`: String, amount: Long, currencyCode: String)
-
-  case class AddBankAccountEventResponseJson(id: String, errorMessages: Seq[String] = Seq.empty) extends ResponseJson {
-    override val isSuccessful: Boolean = errorMessages.isEmpty
-  }
-
-  case class CloseBankAccountRequestJson(id: String)
-
-  case class CloseBankAccountResponseJson(id: String, errorMessages: Seq[String] = Seq.empty) extends ResponseJson {
-    override val isSuccessful: Boolean = errorMessages.isEmpty
-  }
-
-  case class BankAccountEventJson(`type`: String, amount: Long, currencyCode: String, createAt: Long)
-
-  case class ResolveBankAccountEventsResponseJson(id: String,
-                                                  values: Seq[BankAccountEventJson],
+  case class ResolveBankAccountEventsResponseJson(values: Seq[BankAccountEventJson],
                                                   errorMessages: Seq[String] = Seq.empty)
       extends ResponseJson {
     override val isSuccessful: Boolean = errorMessages.isEmpty
@@ -68,8 +47,7 @@ object Routes {
 
 }
 
-case class Routes(bankAccountIdGenerator: IdGenerator[BankAccountId],
-                  bankAccountAggregateUseCase: BankAccountAggregateUseCase,
+case class Routes(bankAccountAggregateUseCase: BankAccountAggregateUseCase,
                   bankAccountReadModelUseCase: BankAccountReadModelUseCase)(
     implicit system: ActorSystem,
     mat: Materializer
@@ -89,7 +67,7 @@ case class Routes(bankAccountIdGenerator: IdGenerator[BankAccountId],
     HttpResponse(
       entity = HttpEntity(
         ContentTypes.`text/plain(UTF-8)`,
-        "Wellcome to Bank API"
+        "Welcome to Bank API"
       )
     )
   )

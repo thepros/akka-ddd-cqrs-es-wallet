@@ -1,6 +1,6 @@
 package com.github.j5ik2o.bank.adaptor.generator
 
-import com.github.j5ik2o.bank.domain.model.{ BankAccountEventId, BankAccountId }
+import com.github.j5ik2o.bank.domain.model.BankAccountEventId
 import slick.jdbc.JdbcProfile
 
 import scala.concurrent.{ ExecutionContext, Future }
@@ -32,12 +32,4 @@ class BankAccountEventIdGeneratorOnJDBC(profile: JdbcProfile, db: JdbcProfile#Ba
 
   override def generateId()(implicit ec: ExecutionContext): Future[BankAccountEventId] =
     internalGenerateId().map(BankAccountEventId)
-}
-
-class BankAccountIdGeneratorOnJDBC(profile: JdbcProfile, db: JdbcProfile#Backend#Database)
-    extends AbstractIdGeneratorOnJDBC[BankAccountId](profile, db) {
-  override val tableName: String = "bank_account_id_sequence_number"
-
-  override def generateId()(implicit ec: ExecutionContext): Future[BankAccountId] =
-    internalGenerateId().map(BankAccountId)
 }
