@@ -27,7 +27,7 @@ class BankAccountReadModelUseCase(bankAccountReadModelFlows: BankAccountReadMode
   private implicit val mat: ActorMaterializer       = ActorMaterializer()
   private implicit val ec: ExecutionContextExecutor = system.dispatcher
 
-  def resolveBankAccountEventsById(
+  def resolveBankAccountEvents(
       request: ResolveBankAccountEventsRequest
   )(implicit ec: ExecutionContext): Future[ResolveBankAccountEventsResponse] =
     offerToQueue(resolveBankAccountEventQueue)(request, Promise())
@@ -43,12 +43,10 @@ class BankAccountReadModelUseCase(bankAccountReadModelFlows: BankAccountReadMode
 
   private val projectionFlow: Flow[(BankAccountEvent, Long), Int, NotUsed] =
     Flow[(BankAccountEvent, Long)].flatMapConcat {
-
       case (event: BankAccountDeposited, sequenceNr: Long) =>
         Source
           .single((event.deposit, sequenceNr, event.occurredAt))
           .via(bankAccountReadModelFlows.depositBankAccountFlow)
-
     }
 
   def execute(): Future[Done] = {

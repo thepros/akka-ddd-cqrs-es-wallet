@@ -8,8 +8,6 @@ trait BankAccount {
 
   def balance: BigDecimal
 
-  def createdAt: TimePoint
-
   def deposit(money: BigDecimal, occurredAt: TimePoint = Clock.now): Either[BankAccountError, BankAccount]
 
 }
@@ -27,13 +25,13 @@ object BankAccount {
   case class NegativeBalanceError(money: BigDecimal)
       extends BankAccountError(s"Forbidden that deposit amount to negative: money = $money")
 
-  def apply(balance: BigDecimal, createdAt: TimePoint): BankAccount =
-    BankAccountImpl(balance, createdAt)
+  def apply(balance: BigDecimal): BankAccount =
+    BankAccountImpl(balance)
 
-  def unapply(self: BankAccount): Option[(BigDecimal, TimePoint)] =
-    Some((self.balance, self.createdAt))
+  def unapply(self: BankAccount): Option[(BigDecimal)] =
+    Some(self.balance)
 
-  private case class BankAccountImpl(balance: BigDecimal, createdAt: TimePoint) extends BankAccount {
+  private case class BankAccountImpl(balance: BigDecimal) extends BankAccount {
 
     override def deposit(money: BigDecimal, occurredAt: TimePoint): Either[BankAccountError, BankAccount] = {
       money match {

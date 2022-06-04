@@ -27,34 +27,14 @@ CREATE TABLE snapshot (
 
 --
 
-CREATE TABLE `bank_account_id_sequence_number`(id bigint unsigned NOT NULL) ENGINE=MyISAM;
-INSERT INTO `bank_account_id_sequence_number` VALUES (100);
-
 CREATE TABLE `bank_account_event_id_sequence_number`(id bigint unsigned NOT NULL) ENGINE=MyISAM;
 INSERT INTO `bank_account_event_id_sequence_number` VALUES (100);
 
-CREATE TABLE `bank_account` (
-  `id`          BIGINT                      NOT NULL,
-  `deleted`     BOOLEAN                     NOT NULL,
-  `name`        VARCHAR(64)                 NOT NULL,
-  `sequence_nr` BIGINT                      NOT NULL,
-  `created_at`  DATETIME(6)                 NOT NULL,
-  `updated_at`  DATETIME(6)                 NOT NULL,
-  PRIMARY KEY (`id`)
-)
-  ENGINE = InnoDB
-  DEFAULT CHARSET = utf8;
-
 
 CREATE TABLE `bank_account_event` (
-  `id`              BIGINT                       NOT NULL,
-  `bank_account_id` BIGINT                       NOT NULL,
-  `type`            ENUM ('deposit', 'withdraw') NOT NULL,
   `amount`          BIGINT                       NOT NULL,
-  `currency_code`   VARCHAR(64)                  NOT NULL,
-  `created_at`      DATETIME(6)                  NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `bank_account_event_bank_account_id_idx` (`bank_account_id`)
+  `sequence_nr`     BIGINT                      NOT NULL,
+  `created_at`      DATETIME(6)                  NOT NULL
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8;

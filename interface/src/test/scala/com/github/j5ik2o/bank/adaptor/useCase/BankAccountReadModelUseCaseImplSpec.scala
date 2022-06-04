@@ -42,7 +42,7 @@ class BankAccountReadModelUseCaseImplSpec
       awaitAssert(
         {
           val resolveBankAccountEventsSucceeded = bankAccountReadModelUseCase
-            .resolveBankAccountEventsById(ResolveBankAccountEventsRequest())
+            .resolveBankAccountEvents(ResolveBankAccountEventsRequest())
             .futureValue
             .asInstanceOf[ResolveBankAccountEventsSucceeded]
           resolveBankAccountEventsSucceeded.events.head.amount shouldBe 1000

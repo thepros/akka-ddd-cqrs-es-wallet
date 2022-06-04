@@ -5,6 +5,7 @@ import scala.concurrent.ExecutionContext
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.Directives._
 import com.github.j5ik2o.bank.useCase.{ BankAccountAggregateUseCase, BankAccountReadModelUseCase }
+import com.github.j5ik2o.bank.useCase.BankAccountAggregateUseCase.Protocol.ResolveBankAccountEventsRequest
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.auto._
 
@@ -20,13 +21,13 @@ trait BankAccountController extends BankAccountValidateDirectives {
   protected val bankAccountReadModelUseCase: BankAccountReadModelUseCase
 
   def toBankAccountRoutes(implicit ec: ExecutionContext): Route = handleRejections(RejectionHandlers.default) {
-    addBankAccountEvent
+    addBankAccountEvent ~ resolveBankAccountEvents
   }
 
   def addBankAccountEvent(implicit ec: ExecutionContext): Route =
-    pathPrefix(bankAccountsRouteName / Segment / "events") { _ =>
+    pathPrefix(bankAccountsRouteName / "deposit") {
       pathEndOrSingleSlash {
-        put {
+        post {
           entity(as[AddBankAccountEventRequestJson]) { json =>
             validateBankAccountRequestJson(json).apply { validatedJson =>
               val future = bankAccountAggregateUseCase
@@ -36,7 +37,20 @@ trait BankAccountController extends BankAccountValidateDirectives {
                 complete(response)
               }
             }
+          }
+        }
+      }
+    }
 
+  def resolveBankAccountEvents(implicit ec: ExecutionContext): Route =
+    pathPrefix(bankAccountsRouteName) {
+      pathEndOrSingleSlash {
+        get {
+          val future = bankAccountReadModelUseCase
+            .resolveBankAccountEvents(ResolveBankAccountEventsRequest())
+            .map(convertToResolveInterfaceModel)
+          onSuccess(future) { response =>
+            complete(response)
           }
         }
       }

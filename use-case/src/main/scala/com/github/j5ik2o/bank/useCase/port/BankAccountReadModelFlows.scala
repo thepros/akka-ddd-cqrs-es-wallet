@@ -14,7 +14,9 @@ trait BankAccountReadModelFlows {
 
   def resolveLastSeqNrSource(implicit ec: ExecutionContext): Source[Long, NotUsed]
 
-  def depositBankAccountFlow(implicit ec: ExecutionContext): Flow[(BigDecimal, Long, TimePoint), Int, NotUsed]
+  def depositBankAccountFlow(
+      implicit ec: ExecutionContext
+  ): Flow[(BigDecimal, Long, TimePoint), Int, NotUsed]
 
   def resolveBankAccountEventByIdFlow(
       implicit ec: ExecutionContext

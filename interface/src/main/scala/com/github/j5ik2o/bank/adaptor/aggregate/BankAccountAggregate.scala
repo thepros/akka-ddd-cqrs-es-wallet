@@ -58,12 +58,15 @@ class BankAccountAggregate extends PersistentActor with ActorLogging {
 
   override def persistenceId: String = s"$AggregateName-${self.path.name}"
 
-  private var stateOpt: Option[BankAccount] = None
+  private var stateOpt: Option[BankAccount] = applyState()
 
   private def tryToSaveSnapshot(): Unit =
     if (lastSequenceNr % config.numOfEventsToSnapshot == 0) {
       foreachState(saveSnapshot)
     }
+
+  private def applyState(): Option[BankAccount] =
+    Some(BankAccount(BankAccount.DEFAULT_MONEY_ZERO))
 
   private def mapState(
       f: BankAccount => Either[BankAccountError, BankAccount]

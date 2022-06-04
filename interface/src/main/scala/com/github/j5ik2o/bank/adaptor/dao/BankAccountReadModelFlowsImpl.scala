@@ -4,8 +4,6 @@ import scala.concurrent.ExecutionContext
 
 import akka.NotUsed
 import akka.stream.scaladsl.{ Flow, Source }
-import com.github.j5ik2o.bank.adaptor.generator.IdGenerator
-import com.github.j5ik2o.bank.domain.model._
 import com.github.j5ik2o.bank.useCase.BankAccountAggregateUseCase.Protocol.{
   BankAccountEventBody,
   ResolveBankAccountEventsRequest,
@@ -17,8 +15,7 @@ import org.sisioh.baseunits.scala.time.TimePoint
 import slick.jdbc.JdbcProfile
 
 class BankAccountReadModelFlowsImpl(val profile: JdbcProfile, val db: JdbcProfile#Backend#Database)
-    extends BankAccountComponent
-    with BankAccountEventComponent
+    extends BankAccountEventComponent
     with BankAccountReadModelFlows {
   import profile.api._
 
@@ -39,7 +36,7 @@ class BankAccountReadModelFlowsImpl(val profile: JdbcProfile, val db: JdbcProfil
 
   def resolveLastSeqNrSource(implicit ec: ExecutionContext): Source[Long, NotUsed] =
     Source.single(1).mapAsync(1) { _ =>
-      db.run(BankAccountDao.map(_.sequenceNr).max.result)
+      db.run(BankAccountEventDao.map(_.sequenceNr).max.result)
         .map(_.getOrElse(0L))
     }
 
@@ -49,16 +46,14 @@ class BankAccountReadModelFlowsImpl(val profile: JdbcProfile, val db: JdbcProfil
     Flow[(BigDecimal, Long, TimePoint)].mapAsync(1) {
       case (deposit, sequenceNr, occurredAt) =>
         val query = (for {
-          bankAccountUpdateResult <- BankAccountDao
-            .map(e => e.sequenceNr)
-            .update(sequenceNr)
           bankAccountEventInsertResult <- BankAccountEventDao.forceInsert(
             BankAccountEventRecord(
               deposit.toLong,
+              sequenceNr,
               occurredAt.asJavaZonedDateTime()
             )
           )
-        } yield (bankAccountUpdateResult, bankAccountEventInsertResult)).transactionally
+        } yield bankAccountEventInsertResult).transactionally
         db.run(query).map(_ => 1)
 
     }
