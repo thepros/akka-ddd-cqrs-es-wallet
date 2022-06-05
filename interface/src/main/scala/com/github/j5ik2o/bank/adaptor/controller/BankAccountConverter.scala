@@ -1,5 +1,7 @@
 package com.github.j5ik2o.bank.adaptor.controller
 
+import java.time.Instant
+
 import com.github.j5ik2o.bank.useCase.BankAccountAggregateUseCase
 import com.github.j5ik2o.bank.useCase.BankAccountAggregateUseCase.Protocol
 import com.github.j5ik2o.bank.useCase.BankAccountAggregateUseCase.Protocol._
@@ -13,7 +15,7 @@ object BankAccountConverter {
     : AddBankAccountEventRequestJson => Protocol.AddBankAccountEventRequest = {
     (json: AddBankAccountEventRequestJson) =>
       BankAccountAggregateUseCase.Protocol
-        .DepositRequest(BigDecimal(json.amount))
+        .DepositRequest(BigDecimal(json.amount), Instant.parse(json.datetime))
   }
 
   def convertToAddBankAccountEventInterfaceModel(

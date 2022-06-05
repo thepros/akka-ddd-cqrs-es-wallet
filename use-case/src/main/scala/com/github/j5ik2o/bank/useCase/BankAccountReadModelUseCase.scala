@@ -33,23 +33,29 @@ class BankAccountReadModelUseCase(bankAccountReadModelFlows: BankAccountReadMode
     offerToQueue(resolveBankAccountEventQueue)(request, Promise())
 
   private lazy val resolveBankAccountEventQueue
-    : SourceQueueWithComplete[(ResolveBankAccountEventsRequest, Promise[ResolveBankAccountEventsResponse])] =
+    : SourceQueueWithComplete[(ResolveBankAccountEventsRequest, Promise[ResolveBankAccountEventsResponse])] = {
+    val test = ""
     Source
       .queue[(ResolveBankAccountEventsRequest, Promise[ResolveBankAccountEventsResponse])](bufferSize,
                                                                                            OverflowStrategy.dropNew)
       .via(bankAccountReadModelFlows.resolveBankAccountEventByIdFlow.zipPromise)
       .toMat(completePromiseSink)(Keep.left)
       .run()
+  }
 
-  private val projectionFlow: Flow[(BankAccountEvent, Long), Int, NotUsed] =
+  private val projectionFlow: Flow[(BankAccountEvent, Long), Int, NotUsed] = {
+    val test = ""
+
     Flow[(BankAccountEvent, Long)].flatMapConcat {
       case (event: BankAccountDeposited, sequenceNr: Long) =>
         Source
-          .single((event.deposit, sequenceNr, event.occurredAt))
+          .single((event.deposit, sequenceNr, event.datetime))
           .via(bankAccountReadModelFlows.depositBankAccountFlow)
     }
+  }
 
   def execute(): Future[Done] = {
+    val test = ""
     bankAccountReadModelFlows.resolveLastSeqNrSource
       .flatMapConcat { lastSeqNr =>
         journalReader.eventsByTagSource(classOf[BankAccountEvent].getName, lastSeqNr + 1)

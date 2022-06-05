@@ -1,6 +1,6 @@
 package com.github.j5ik2o.bank.useCase
 
-import java.time.ZonedDateTime
+import java.time.{ Instant, ZonedDateTime }
 
 import scala.concurrent.{ ExecutionContext, Future, Promise }
 
@@ -24,7 +24,7 @@ object BankAccountAggregateUseCase {
     sealed trait AddBankAccountEventRequest  extends BankAccountCommandRequest
     sealed trait AddBankAccountEventResponse extends BankAccountCommandResponse
 
-    case class DepositRequest(deposit: BigDecimal) extends AddBankAccountEventRequest
+    case class DepositRequest(deposit: BigDecimal, datetime: Instant) extends AddBankAccountEventRequest
 
     sealed trait DepositResponse extends AddBankAccountEventResponse
 

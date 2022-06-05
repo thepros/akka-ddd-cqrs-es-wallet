@@ -1,5 +1,7 @@
 package com.github.j5ik2o.bank.adaptor.aggregate
 
+import java.time.Instant
+
 import akka.actor.{ ActorLogging, Props }
 import akka.persistence.{ PersistentActor, RecoveryCompleted, SaveSnapshotSuccess, SnapshotOffer }
 import cats.implicits._
@@ -29,7 +31,7 @@ object BankAccountAggregate {
 
     // ---
 
-    case class DepositRequest(deposit: BigDecimal) extends BankAccountCommandRequest
+    case class DepositRequest(deposit: BigDecimal, datetime: Instant) extends BankAccountCommandRequest
 
     sealed trait DepositResponse extends BankAccountCommandResponse
 
@@ -86,7 +88,7 @@ class BankAccountAggregate extends PersistentActor with ActorLogging {
     */
   override def receiveRecover: Receive = {
     case event: BankAccountDeposited =>
-      stateOpt = mapState(_.deposit(event.deposit, event.occurredAt)).toSomeOrThrow
+      stateOpt = mapState(_.deposit(event.deposit, event.datetime)).toSomeOrThrow
     case SnapshotOffer(_, _state: BankAccount) =>
       stateOpt = Some(_state)
     case SaveSnapshotSuccess(metadata) =>
@@ -106,12 +108,12 @@ class BankAccountAggregate extends PersistentActor with ActorLogging {
         sender() ! GetBalanceResponse(state.balance)
       }
 
-    case DepositRequest(deposit) =>
-      mapState(_.deposit(deposit)) match {
+    case DepositRequest(deposit, datetime) =>
+      mapState(_.deposit(deposit, datetime)) match {
         case Left(error) =>
           sender() ! DepositFailed(error)
         case Right(newState) =>
-          persist(BankAccountDeposited(deposit)) { _ =>
+          persist(BankAccountDeposited(deposit, datetime)) { _ =>
             stateOpt = Some(newState)
             sender() ! DepositSucceeded()
             tryToSaveSnapshot()

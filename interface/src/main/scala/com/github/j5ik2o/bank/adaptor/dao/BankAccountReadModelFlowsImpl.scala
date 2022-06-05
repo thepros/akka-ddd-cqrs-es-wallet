@@ -1,5 +1,7 @@
 package com.github.j5ik2o.bank.adaptor.dao
 
+import java.time.{ Instant, ZoneOffset }
+
 import scala.concurrent.ExecutionContext
 
 import akka.NotUsed
@@ -11,7 +13,6 @@ import com.github.j5ik2o.bank.useCase.BankAccountAggregateUseCase.Protocol.{
   ResolveBankAccountEventsSucceeded
 }
 import com.github.j5ik2o.bank.useCase.port.BankAccountReadModelFlows
-import org.sisioh.baseunits.scala.time.TimePoint
 import slick.jdbc.JdbcProfile
 
 class BankAccountReadModelFlowsImpl(val profile: JdbcProfile, val db: JdbcProfile#Backend#Database)
@@ -42,15 +43,15 @@ class BankAccountReadModelFlowsImpl(val profile: JdbcProfile, val db: JdbcProfil
 
   override def depositBankAccountFlow(
       implicit ec: ExecutionContext
-  ): Flow[(BigDecimal, Long, TimePoint), Int, NotUsed] =
-    Flow[(BigDecimal, Long, TimePoint)].mapAsync(1) {
+  ): Flow[(BigDecimal, Long, Instant), Int, NotUsed] =
+    Flow[(BigDecimal, Long, Instant)].mapAsync(1) {
       case (deposit, sequenceNr, occurredAt) =>
         val query = (for {
           bankAccountEventInsertResult <- BankAccountEventDao.forceInsert(
             BankAccountEventRecord(
               deposit.toLong,
               sequenceNr,
-              occurredAt.asJavaZonedDateTime()
+              occurredAt.atZone(ZoneOffset.UTC)
             )
           )
         } yield bankAccountEventInsertResult).transactionally

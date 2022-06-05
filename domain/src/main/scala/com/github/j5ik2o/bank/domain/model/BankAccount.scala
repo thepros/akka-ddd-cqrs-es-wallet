@@ -1,14 +1,14 @@
 package com.github.j5ik2o.bank.domain.model
 
+import java.time.Instant
+
 import com.github.j5ik2o.bank.domain.model.BankAccount.BankAccountError
-import org.sisioh.baseunits.scala.time.TimePoint
-import org.sisioh.baseunits.scala.timeutil.Clock
 
 trait BankAccount {
 
   def balance: BigDecimal
 
-  def deposit(money: BigDecimal, occurredAt: TimePoint = Clock.now): Either[BankAccountError, BankAccount]
+  def deposit(money: BigDecimal, occurredAt: Instant): Either[BankAccountError, BankAccount]
 
 }
 
@@ -33,7 +33,7 @@ object BankAccount {
 
   private case class BankAccountImpl(balance: BigDecimal) extends BankAccount {
 
-    override def deposit(money: BigDecimal, occurredAt: TimePoint): Either[BankAccountError, BankAccount] = {
+    override def deposit(money: BigDecimal, occurredAt: Instant): Either[BankAccountError, BankAccount] = {
       money match {
         case d if d == 0 =>
           Left(DepositZeroError(money))

@@ -25,11 +25,11 @@ class BankAccountAggregateFlowsImpl(aggregateRef: ActorRef)(
     Flow[AddBankAccountEventRequest]
       .map {
         case request: DepositRequest =>
-          BankAccountAggregate.Protocol.DepositRequest(request.deposit)
+          BankAccountAggregate.Protocol.DepositRequest(request.deposit, request.datetime)
       }
       .mapAsync(1)(aggregateRef ? _)
       .map {
-        case response: BankAccountAggregate.Protocol.DepositSucceeded =>
+        case _: BankAccountAggregate.Protocol.DepositSucceeded =>
           DepositSucceeded()
         case response: BankAccountAggregate.Protocol.DepositFailed =>
           DepositFailed(response.error)
