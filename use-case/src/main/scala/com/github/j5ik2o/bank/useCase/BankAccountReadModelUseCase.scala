@@ -34,7 +34,6 @@ class BankAccountReadModelUseCase(bankAccountReadModelFlows: BankAccountReadMode
 
   private lazy val resolveBankAccountEventQueue
     : SourceQueueWithComplete[(ResolveBankAccountEventsRequest, Promise[ResolveBankAccountEventsResponse])] = {
-    val test = ""
     Source
       .queue[(ResolveBankAccountEventsRequest, Promise[ResolveBankAccountEventsResponse])](bufferSize,
                                                                                            OverflowStrategy.dropNew)
@@ -44,8 +43,6 @@ class BankAccountReadModelUseCase(bankAccountReadModelFlows: BankAccountReadMode
   }
 
   private val projectionFlow: Flow[(BankAccountEvent, Long), Int, NotUsed] = {
-    val test = ""
-
     Flow[(BankAccountEvent, Long)].flatMapConcat {
       case (event: BankAccountDeposited, sequenceNr: Long) =>
         Source
@@ -55,7 +52,6 @@ class BankAccountReadModelUseCase(bankAccountReadModelFlows: BankAccountReadMode
   }
 
   def execute(): Future[Done] = {
-    val test = ""
     bankAccountReadModelFlows.resolveLastSeqNrSource
       .flatMapConcat { lastSeqNr =>
         journalReader.eventsByTagSource(classOf[BankAccountEvent].getName, lastSeqNr + 1)
